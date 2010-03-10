@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-require 'termcolor'
 require 'logger'
 require 'sequel'
 Sequel::Model.plugin(:schema)
 #DB = Sequel.sqlite('/tmp/newgrep.db')
 #DB = Sequel.sqlite('/tmp/newgrep.db', :loggers => Logger.new($stdout))
-DB = Sequel.mysql 'newgrep', :user => 'nobody', :password => 'nobody', :host => 'localhost', :encoding => 'utf8'
+DB = Sequel.mysql 'newgrep', :user => 'nobody', :password => 'nobody', :host => 'localhost', :encoding => 'utf8'#, :loggers => Logger.new($stdout)
 
 def logger
   @Logger ||= Logger.new($stdout)
@@ -104,12 +103,11 @@ def find_document(path)
 end
 
 def wrap_color(string, keyword, color)
-  TermColor.parse TermColor.escape(string).gsub(Regexp.new(TermColor.escape(keyword), 'i'),
-    "<#{color}>\\&</#{color}>")
+  return string.gsub(keyword, "\e[#{color}m\\&\e[0m")
 end
 
 def with_color(string, color)
-  TermColor.parse "<#{color}>#{TermColor.escape(string)}</#{color}>"
+  return "\e[#{color}m#{string}\e[0m"
 end
 
 def search(word, base_path = '/')
