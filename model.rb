@@ -95,6 +95,12 @@ class Token < Sequel::Model
   end
   one_to_many :indices
   create_table unless table_exists?
+
+  def indices
+    Index.filter(
+      :token_id => self.id
+      ).order(:document_id, :line)
+  end
 end
 
 def find_document(path)
@@ -110,12 +116,14 @@ def with_color(string, color)
   TermColor.parse "<#{color}>#{TermColor.escape(string)}</#{color}>"
 end
 
-def search(word)
+def search(word, base_path = '/')
   token = Token.find(:body => word)
   token or return token_search(word)
   last_document = nil
+  path_filter = Regexp.new('^' + File.expand_path(base_path))
   token.indices.each{|index|
     document = index.document
+    next unless document.path =~ path_filter
     puts with_color(document.path, 32) if last_document != document
     last_document = document
     puts "#{index.line}:" + wrap_color(document.content_at(index.line), word, 43)
