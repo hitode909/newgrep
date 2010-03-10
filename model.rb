@@ -33,23 +33,26 @@ class Document < Sequel::Model
   end
 
   def index
-    self.content.each_with_index{|line, index|
-      line_num = index+1
-      line.scan(/\w+/).each{|token|
-        logger.debug "TOKEN: #{token}"
-        token = Token.find_or_create(:body => token)
-        index = Index.create(
-          :document_id => self.id,
-          :token_id => token.id,
-          :line => line_num
-          )
+    DB.transaction{
+      self.content.each_with_index{|line, index|
+        line_num = index+1
+        line.scan(/\w+/).each{|token|
+          # logger.debug "TOKEN: #{token}"
+          token = Token.find_or_create(:body => token)
+          index = Index.create(
+            :document_id => self.id,
+            :token_id => token.id,
+            :line => line_num
+            )
+        }
       }
+      self.indexed_at = Time.now
+      self.save
     }
-    self.indexed_at = Time.now
   end
 
   def should_index
-    !self.indexed_at or File.mtime(self.path) > self.indexed_at
+    not self.indexed_at or File.mtime(self.path) > self.indexed_at
   end
 end
 
