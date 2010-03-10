@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+require 'rubygems'
 require 'logger'
 require 'sequel'
 Sequel::Model.plugin(:schema)
