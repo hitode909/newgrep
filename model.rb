@@ -3,8 +3,9 @@ require 'termcolor'
 require 'logger'
 require 'sequel'
 Sequel::Model.plugin(:schema)
-DB = Sequel.sqlite('/tmp/scsearch.db')
-#DB = Sequel.sqlite('test.db', :loggers => Logger.new($stdout))
+#DB = Sequel.sqlite('/tmp/newgrep.db')
+#DB = Sequel.sqlite('/tmp/newgrep.db', :loggers => Logger.new($stdout))
+DB = Sequel.mysql 'newgrep', :user => 'nobody', :password => 'nobody', :host => 'localhost', :encoding => 'utf8'
 
 def logger
   @Logger ||= Logger.new($stdout)
