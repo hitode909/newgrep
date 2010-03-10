@@ -105,7 +105,7 @@ end
 
 def wrap_color(string, keyword, color)
   TermColor.parse TermColor.escape(string).gsub(Regexp.new(TermColor.escape(keyword), 'i'),
-    "<#{color}>#{TermColor.escape(keyword)}</#{color}>")
+    "<#{color}>\\&</#{color}>")
 end
 
 def with_color(string, color)
