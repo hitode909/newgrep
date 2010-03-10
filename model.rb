@@ -49,7 +49,7 @@ class Document < Sequel::Model
   end
 
   def should_index
-    true
+    !self.indexed_at or File.mtime(self.path) > self.indexed_at
   end
 end
 
