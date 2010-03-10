@@ -13,6 +13,7 @@ class Document < Sequel::Model
     String :path, :null => false, :uniq => true
     datetime :created_at
     datetime :updated_at
+    datetime :indexed_at
   end
   create_table unless table_exists?
   plugin :timestamps, :update_on_create => true
@@ -31,18 +32,24 @@ class Document < Sequel::Model
     Index.filter(:document_id => self.id).delete
   end
 
-  def has_token(body, line)
-    token = Token.find_or_create(:body => body)
-    index = Index.create(
-      :document_id => self.id,
-      :token_id => token.id,
-      :line => line
-      )
-    index
+  def index
+    self.content.each_with_index{|line, index|
+      line_num = index+1
+      line.scan(/\w+/).each{|token|
+        logger.debug "TOKEN: #{token}"
+        token = Token.find_or_create(:body => token)
+        index = Index.create(
+          :document_id => self.id,
+          :token_id => token.id,
+          :line => line_num
+          )
+      }
+    }
+    self.indexed_at = Time.now
   end
 
-  def should_reindex
-    raise
+  def should_index
+    true
   end
 end
 
