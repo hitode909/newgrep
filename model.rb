@@ -6,6 +6,10 @@ Sequel::Model.plugin(:schema)
 DB = Sequel.sqlite('test.db')
 #DB = Sequel.sqlite('test.db', :loggers => Logger.new($stdout))
 
+def logger
+  @Logger ||= Logger.new($stdout)
+end
+
 class LineContent < Sequel::Model
   set_schema do
     String :body, :null => false
