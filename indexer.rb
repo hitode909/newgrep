@@ -6,18 +6,13 @@ def logger
 end
 
 ARGV.each {|filename|
-  doc = document(filename)
+  doc = find_document(filename)
   doc.delete_old_indices
+  logger.debug "INDEXING: #{filename}"
   doc.content.each_with_index{|line, index|
     line.scan(/\w+/).each{|token|
       logger.debug "TOKEN: #{token}"
-      doc.has_token(token, index)
+      doc.has_token(token, index+1)
     }
   }
 }
-
-
-
-
-
-
