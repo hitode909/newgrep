@@ -85,6 +85,8 @@ class Index < Sequel::Model
     Fixnum :line, :null => false
   end
   many_to_one :document
+  many_to_one :line_content, :key=>[:document_id, :line], :primary_key=>[:document_id, :line]
+
   create_table unless table_exists?
 end
 
@@ -93,7 +95,7 @@ class Token < Sequel::Model
     primary_key :id
     String :body, :null => false, :uniq => true
   end
-  one_to_many :indices, :order => [:document_id, :line], :eager=>[:document]
+  one_to_many :indices, :order => [:document_id, :line], :eager=>[:document, :line_content]
   create_table unless table_exists?
 end
 
@@ -120,7 +122,7 @@ def search(word, base_path = '/')
     next unless document.path =~ path_filter
     puts with_color(document.path, 32) if last_document != document
     last_document = document
-    puts "#{index.line}:" + wrap_color(document.content_at(index.line), word, 43)
+    puts "#{index.line}:" + wrap_color(index.line_content.body, word, 43)
   }
 end
 
