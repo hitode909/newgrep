@@ -42,14 +42,14 @@ class Document < Sequel::Model
     LineContent.find(:document_id => self.id, :line => line).body
   end
 
-  def delete_old_indices
+  def delete_indices
     Index.filter(:document_id => self.id).delete
     LineContent.filter(:document_id => self.id).delete
   end
 
   def index
     DB.transaction{
-      self.delete_old_indices
+      self.delete_indices
       self.content.each_with_index{|line, index|
         line_number = index+1
         LineContent.create(
