@@ -5,7 +5,16 @@ Sequel::Model.plugin(:schema)
 DB = Sequel.sqlite('test.db')
 #DB = Sequel.sqlite('test.db', :loggers => Logger.new($stdout))
 
-# class Line
+class LineContent < Sequel::Model
+  set_schema do
+    String :body, :null => false
+    foreign_key :document_id
+    Fixnum :line
+    unique [:document_id, :line]
+  end
+  create_table unless table_exists?
+  many_to_one :document
+end
 
 class Document < Sequel::Model
   set_schema do
@@ -24,25 +33,30 @@ class Document < Sequel::Model
   end
 
   def content_at(line)
-    @lines ||= self.content.split(/\n/)
-    @lines[line-1]
+    LineContent.find(:document_id => self.id, :line => line).body
   end
 
   def delete_old_indices
     Index.filter(:document_id => self.id).delete
+    LineContent.filter(:document_id => self.id).delete
   end
 
   def index
     DB.transaction{
       self.content.each_with_index{|line, index|
-        line_num = index+1
+        line_number = index+1
+        LineContent.create(
+            :document_id => self.id,
+            :body => line,
+            :line => line_number
+          )
         line.scan(/\w+/).each{|token|
           # logger.debug "TOKEN: #{token}"
           token = Token.find_or_create(:body => token)
           index = Index.create(
             :document_id => self.id,
             :token_id => token.id,
-            :line => line_num
+            :line => line_number
             )
         }
       }
