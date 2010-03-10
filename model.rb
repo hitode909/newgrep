@@ -53,9 +53,9 @@ class Document < Sequel::Model
       self.content.each_with_index{|line, index|
         line_number = index+1
         LineContent.create(
-            :document_id => self.id,
-            :body => line,
-            :line => line_number
+          :document_id => self.id,
+          :body => line,
+          :line => line_number
           )
         line.scan(/\w+/).each{|token|
           #logger.debug "TOKEN: #{token}"
