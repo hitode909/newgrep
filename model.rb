@@ -24,10 +24,25 @@ class LineContent < Sequel::Model
   many_to_one :document
 end
 
+class Directory < Sequel::Model
+  set_schema do
+    primary_key :id
+    String :path, :null => false, :uniq => true
+  end
+  create_table unless table_exists?
+  one_to_many :indices
+
+  def self.neighbors(basedir)
+    basedir = File.expand_path(basedir)
+    directories = self.filter(:path.like(basedir + '%')).all
+  end
+end
+
 class Document < Sequel::Model
   set_schema do
     primary_key :id
     String :path, :null => false, :uniq => true
+    foreign_key :directory_id
     datetime :created_at
     datetime :updated_at
     datetime :indexed_at
@@ -35,6 +50,11 @@ class Document < Sequel::Model
   create_table unless table_exists?
   plugin :timestamps, :update_on_create => true
   one_to_many :indices
+
+  def before_create
+    directory = Directory.find_or_create(:path => File.dirname(self.path))
+    self.directory_id = directory.id
+  end
 
   def content
     @content ||= open(self.path).read
@@ -64,6 +84,7 @@ class Document < Sequel::Model
           token = Token.find_or_create(:body => token)
           index = Index.create(
             :document_id => self.id,
+            :directory_id => self.directory_id,
             :token_id => token.id,
             :line => line_number
             )
@@ -83,6 +104,7 @@ class Index < Sequel::Model
   set_schema do
     primary_key :id
     foreign_key :document_id, :null => false
+    foreign_key :directory_id, :null => false
     foreign_key :token_id, :null => false
     Fixnum :line, :null => false
   end
@@ -97,7 +119,6 @@ class Token < Sequel::Model
     primary_key :id
     String :body, :null => false, :uniq => true
   end
-  one_to_many :indices, :order => [:document_id, :line], :eager=>[:document, :line_content]
   create_table unless table_exists?
 end
 
@@ -125,10 +146,10 @@ def search(word, base_path = '/')
   token = Token.find(:body => word)
   token or return token_search(word)
   last_document = nil
-  path_filter = Regexp.new('^' + File.expand_path(base_path))
-  token.indices.each{|index|
+  dirs = Directory.neighbors(File.expand_path(base_path))
+  indices = Index.filter(:token_id => token.id, :directory_id => dirs.map(&:id)).order(:document_id, :line).eager(:document, :line_content).all
+  indices.each{|index|
     document = index.document
-    next unless document.path =~ path_filter
     puts if last_document and last_document != document
     puts with_color(document.path, 32) if last_document != document
     last_document = document
