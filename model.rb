@@ -120,6 +120,11 @@ class Token < Sequel::Model
     String :body, :null => false, :uniq => true
   end
   create_table unless table_exists?
+  one_to_many :indices
+
+  def used_count
+    @used_count ||= self.indices.count
+  end
 end
 
 def find_document(path)
@@ -158,7 +163,16 @@ def search(word, base_path = '/')
 end
 
 def token_search(word)
-  tokens = Token.filter(:body.like(word + '%'))
-  puts "tokens: "
-  puts tokens.map(&:body)
+  tokens = Token.filter(:body.like(word + '%')).all.sort_by{|a| a.used_count * -1 }
+  tokens.each{|token|
+    puts "#{token.body}\t(#{token.used_count})"
+  }
 end
+
+
+
+
+
+
+
+
