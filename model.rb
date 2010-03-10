@@ -119,6 +119,7 @@ def search(word, base_path = '/')
   token.indices.each{|index|
     document = index.document
     next unless document.path =~ path_filter
+    puts if last_document and last_document != document
     puts with_color(document.path, 32) if last_document != document
     last_document = document
     puts "#{index.line}:" + wrap_color(index.line_content.body, word, 43)
