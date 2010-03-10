@@ -93,14 +93,8 @@ class Token < Sequel::Model
     primary_key :id
     String :body, :null => false, :uniq => true
   end
-  one_to_many :indices
+  one_to_many :indices, :order => [:document_id, :line], :eager=>[:document]
   create_table unless table_exists?
-
-  def indices
-    Index.filter(
-      :token_id => self.id
-      ).order(:document_id, :line)
-  end
 end
 
 def find_document(path)
