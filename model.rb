@@ -7,6 +7,8 @@ Sequel::Model.plugin(:schema)
 #DB = Sequel.sqlite('/tmp/newgrep.db', :loggers => Logger.new($stdout))
 DB = Sequel.mysql 'newgrep', :user => 'nobody', :password => 'nobody', :host => 'localhost', :encoding => 'utf8'#, :loggers => Logger.new($stdout)
 
+USE_COLOR = $stdout.tty?
+
 def logger
   @Logger ||= Logger.new($stdout)
 end
@@ -104,11 +106,19 @@ def find_document(path)
 end
 
 def wrap_color(string, keyword, color)
-  return string.gsub(keyword, "\e[#{color}m\\&\e[0m")
+  if USE_COLOR
+    string.gsub(keyword, "\e[#{color}m\\&\e[0m")
+  else
+    string
+  end
 end
 
 def with_color(string, color)
-  return "\e[#{color}m#{string}\e[0m"
+  if USE_COLOR
+    "\e[#{color}m#{string}\e[0m"
+  else
+    string
+  end
 end
 
 def search(word, base_path = '/')
