@@ -3,7 +3,7 @@ require 'termcolor'
 require 'logger'
 require 'sequel'
 Sequel::Model.plugin(:schema)
-DB = Sequel.sqlite('test.db')
+DB = Sequel.sqlite('/tmp/scsearch.db')
 #DB = Sequel.sqlite('test.db', :loggers => Logger.new($stdout))
 
 def logger
@@ -57,7 +57,7 @@ class Document < Sequel::Model
             :line => line_number
           )
         line.scan(/\w+/).each{|token|
-          logger.debug "TOKEN: #{token}"
+          #logger.debug "TOKEN: #{token}"
           token = Token.find_or_create(:body => token)
           index = Index.create(
             :document_id => self.id,
