@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 require 'termcolor'
 require 'logger'
 require 'sequel'
@@ -43,6 +44,7 @@ class Document < Sequel::Model
 
   def index
     DB.transaction{
+      self.delete_old_indices
       self.content.each_with_index{|line, index|
         line_number = index+1
         LineContent.create(
@@ -51,7 +53,7 @@ class Document < Sequel::Model
             :line => line_number
           )
         line.scan(/\w+/).each{|token|
-          # logger.debug "TOKEN: #{token}"
+          logger.debug "TOKEN: #{token}"
           token = Token.find_or_create(:body => token)
           index = Index.create(
             :document_id => self.id,

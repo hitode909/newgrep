@@ -1,14 +1,7 @@
-require 'logger'
+#!/usr/bin/env ruby
 require 'model'
-
-def logger
-  @Logger ||= Logger.new($stdout)
-end
 
 ARGV.each {|filename|
   document = find_document(filename)
-  if document.should_index
-    document.delete_old_indices
-    document.index
-  end
+  document.index if document and document.should_index
 }
