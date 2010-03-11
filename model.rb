@@ -83,7 +83,7 @@ class Document < Sequel::Model
         first_position = position
         last_token = nil
         Token.tokenize(line).each{|token|
-          position = first_position if last_token and token.body.length < last_token.body.length
+          position = first_position if last_token and token.length < last_token.length
           Index.create(
             :document_id => self.id,
             :directory_id => self.directory_id,
@@ -126,7 +126,8 @@ end
 class Token < Sequel::Model
   set_schema do
     primary_key :id
-    String :body, :null => false, :uniq => true
+    varbinary :body, :null => false, :uniq => true, :size=> 4
+    Fixnum :length, :null => false
   end
   create_table unless table_exists?
   one_to_many :indices
@@ -139,10 +140,10 @@ class Token < Sequel::Model
   def self.tokenize(line)
     DB.transaction {
       (0..(line.length-3)).map{ |i|
-        self.find_or_create(:body => line[i, 3])
+        self.find_or_create(:body => line[i, 3].rstrip, :length => 3)
       } +
       (0..(line.length-2)).map{ |i|
-        self.find_or_create(:body => line[i, 2])
+        self.find_or_create(:body => line[i, 2].rstrip, :length => 2)
       }
     }
   end
@@ -161,7 +162,7 @@ class Token < Sequel::Model
     DB.transaction {
       sum = 0
       diffs.map{|i|
-        token = self.find_or_create(:body => line[sum, i])
+        token = self.find_or_create(:body => line[sum, i].rstrip, :length => i)
         sum += i
         token
       }
@@ -207,10 +208,7 @@ def search(word, base_path = '/')
       skip_count -= 1
       next
     end
-    if slice.map{|i| i.token.id} == token_ids and slice[1..-1].inject(slice.first){ |r, i|
-        p [r.token.body, i.token.body, r.position, i.position]
-        r and r.position + 3 >= i.position ? i : nil
-      }
+    if slice.map{|i| i.token.id} == token_ids and slice[1..-1].inject(slice.first){ |r, i| r and r.position + 3 >= i.position ? i : nil }
       index = slice.first
       document = index.document
       puts if last_document and last_document != document

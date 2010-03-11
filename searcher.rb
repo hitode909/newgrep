@@ -6,12 +6,3 @@ require 'model'
 
 exit unless ARGV.length > 0
 search(ARGV.join(" "), Dir.pwd)
-
-
-
-
-
-
-
-
-
