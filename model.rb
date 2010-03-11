@@ -80,8 +80,10 @@ class Document < Sequel::Model
           :body => line.chomp,
           :line => line_number
           )
+        first_position = position
+        last_token = nil
         Token.tokenize(line).each{|token|
-          #logger.debug "TOKEN: #{token}"
+          position = first_position if last_token and token.body.length < last_token.body.length
           Index.create(
             :document_id => self.id,
             :directory_id => self.directory_id,
@@ -90,6 +92,7 @@ class Document < Sequel::Model
             :position => position
             )
           position += 1
+          last_token = token
         }
       }
       self.indexed_at = Time.now
@@ -204,7 +207,10 @@ def search(word, base_path = '/')
       skip_count -= 1
       next
     end
-    if slice.map{|i| i.token.id} == token_ids
+    if slice.map{|i| i.token.id} == token_ids and slice[1..-1].inject(slice.first){ |r, i|
+        p [r.token.body, i.token.body, r.position, i.position]
+        r and r.position + 3 >= i.position ? i : nil
+      }
       index = slice.first
       document = index.document
       puts if last_document and last_document != document

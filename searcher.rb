@@ -5,7 +5,7 @@ $:.unshift(File.dirname(__FILE__)) unless $:.include?(File.dirname(__FILE__)) ||
 require 'model'
 
 exit unless ARGV.length > 0
-search(ARGV.first, Dir.pwd)
+search(ARGV.join(" "), Dir.pwd)
 
 
 
