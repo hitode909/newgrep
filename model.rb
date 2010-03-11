@@ -203,19 +203,23 @@ def search(word, base_path = '/')
   dirs = Directory.neighbors(File.expand_path(base_path))
   indices = Index.filter(:token_id => tokens.map(&:id), :directory_id => dirs.map(&:id)).order(:document_id, :position).eager(:token, :document, :line_content).all
   skip_count = 0
+  last_line = nil
   slice_each(indices, tokens.length){ |slice|
     if skip_count > 0
       skip_count -= 1
       next
     end
     if slice.map{|i| i.token.id} == token_ids and slice[1..-1].inject(slice.first){ |r, i| r and r.position + 3 >= i.position ? i : nil }
+      skip_count += tokens.length - 1
       index = slice.first
       document = index.document
+      last_line = nil if last_document and last_document != document
+      next if last_line and last_line == index.line
+      last_line = index.line
       puts if last_document and last_document != document
       puts with_color(document.path, 32) if last_document != document
       last_document = document
       puts "#{index.line}:" + wrap_color(index.line_content.body, word, 43)
-      skip_count += tokens.length - 1
     end
   }
 end
