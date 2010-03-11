@@ -72,22 +72,24 @@ class Document < Sequel::Model
   def index
     DB.transaction{
       self.delete_indices
+      position = 0
       self.content.each_with_index{|line, index|
         line_number = index+1
         LineContent.create(
           :document_id => self.id,
-          :body => line,
+          :body => line.chomp,
           :line => line_number
           )
-        line.scan(/\w+/).each{|token|
+        Token.tokenize(line).each{|token|
           #logger.debug "TOKEN: #{token}"
-          token = Token.find_or_create(:body => token)
-          index = Index.create(
+          Index.create(
             :document_id => self.id,
             :directory_id => self.directory_id,
             :token_id => token.id,
-            :line => line_number
+            :line => line_number,
+            :position => position
             )
+          position += 1
         }
       }
       self.indexed_at = Time.now
@@ -107,8 +109,12 @@ class Index < Sequel::Model
     foreign_key :directory_id, :null => false
     foreign_key :token_id, :null => false
     Fixnum :line, :null => false
+    Fixnum :position, :null => false
   end
   many_to_one :document
+  many_to_one :directory
+  many_to_one :token
+  many_to_one :token
   many_to_one :line_content, :key=>[:document_id, :line], :primary_key=>[:document_id, :line]
 
   create_table unless table_exists?
@@ -124,6 +130,39 @@ class Token < Sequel::Model
 
   def used_count
     @used_count ||= self.indices.count
+  end
+
+  # returns array of token
+  def self.tokenize(line)
+    DB.transaction {
+      (0..(line.length-3)).map{ |i|
+        self.find_or_create(:body => line[i, 3])
+      } +
+      (0..(line.length-2)).map{ |i|
+        self.find_or_create(:body => line[i, 2])
+      }
+    }
+  end
+
+  # returns array of token
+  # body.length is 2 or 3
+  def self.slice(line)
+    case line.length % 3
+    when 0
+      diffs = Array.new(line.length / 3, 3)
+    when 1
+      diffs = Array.new(line.length / 3 - 1,3).concat([2, 2])
+    when 2
+      diffs = Array.new(line.length / 3,3).concat([2])
+    end
+    DB.transaction {
+      sum = 0
+      diffs.map{|i|
+        token = self.find_or_create(:body => line[sum, i])
+        sum += i
+        token
+      }
+    }
   end
 end
 
@@ -147,32 +186,32 @@ def with_color(string, color)
   end
 end
 
+def slice_each(list, len, &block)
+  (0..(list.length - len)).map{ |i|
+    yield(list[i, len])
+  }
+end
+
 def search(word, base_path = '/')
-  token = Token.find(:body => word)
-  token or return token_search(word)
+  tokens = Token.slice(word)
+  token_ids = tokens.map(&:id)
   last_document = nil
   dirs = Directory.neighbors(File.expand_path(base_path))
-  indices = Index.filter(:token_id => token.id, :directory_id => dirs.map(&:id)).order(:document_id, :line).eager(:document, :line_content).all
-  indices.each{|index|
-    document = index.document
-    puts if last_document and last_document != document
-    puts with_color(document.path, 32) if last_document != document
-    last_document = document
-    puts "#{index.line}:" + wrap_color(index.line_content.body, word, 43)
+  indices = Index.filter(:token_id => tokens.map(&:id), :directory_id => dirs.map(&:id)).order(:document_id, :position).eager(:token).all
+  skip_count = 0
+  slice_each(indices, tokens.length){ |slice|
+    if skip_count > 0
+      skip_count -= 1
+      next
+    end
+    if slice.map{|i| i.token.id} == token_ids
+      index = slice.first
+      document = index.document
+      puts if last_document and last_document != document
+      puts with_color(document.path, 32) if last_document != document
+      last_document = document
+      puts "#{index.line}:" + wrap_color(index.line_content.body, word, 43)
+      skip_count += tokens.length - 1
+    end
   }
 end
-
-def token_search(word)
-  tokens = Token.filter(:body.like(word + '%')).all.sort_by{|a| a.used_count * -1 }
-  tokens.each{|token|
-    puts "#{token.body}\t(#{token.used_count})"
-  }
-end
-
-
-
-
-
-
-
-
