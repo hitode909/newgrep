@@ -141,9 +141,6 @@ class Token < Sequel::Model
     DB.transaction {
       (0..(line.length-3)).map{ |i|
         self.find_or_create(:body => line[i, 3].rstrip, :length => 3)
-      } +
-      (0..(line.length-2)).map{ |i|
-        self.find_or_create(:body => line[i, 2].rstrip, :length => 2)
       }
     }
   end
@@ -190,27 +187,17 @@ def with_color(string, color)
   end
 end
 
-def slice_each(list, len, &block)
-  (0..(list.length - len)).map{ |i|
-    yield(list[i, len])
-  }
-end
-
 def search(word, base_path = '/')
-  tokens = Token.slice(word)
-  token_ids = tokens.map(&:id)
+  tokens = Token.tokenize(word)
   last_document = nil
+  last_line = nil
   dirs = Directory.neighbors(File.expand_path(base_path))
   indices = Index.filter(:token_id => tokens.map(&:id), :directory_id => dirs.map(&:id)).order(:document_id, :position).eager(:token, :document, :line_content).all
-  skip_count = 0
-  last_line = nil
-  slice_each(indices, tokens.length){ |slice|
-    if skip_count > 0
-      skip_count -= 1
-      next
-    end
-    if slice.map{|i| i.token.id} == token_ids and slice[1..-1].inject(slice.first){ |r, i| r and r.position + 3 >= i.position ? i : nil }
-      skip_count += tokens.length - 1
+
+  while indices.length >= tokens.length
+    slice = indices[0, tokens.length]
+    if slice.map(&:token) == tokens and slice[1..-1].inject(slice.first){ |a, b| a and a.position + 1 == b.position ? b : false }
+      indices.shift(tokens.length)
       index = slice.first
       document = index.document
       last_line = nil if last_document and last_document != document
@@ -220,6 +207,8 @@ def search(word, base_path = '/')
       puts with_color(document.path, 32) if last_document != document
       last_document = document
       puts "#{index.line}:" + wrap_color(index.line_content.body, word, 43)
+    else
+      indices.shift
     end
-  }
+  end
 end
