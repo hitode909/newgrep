@@ -197,7 +197,7 @@ def search(word, base_path = '/')
   token_ids = tokens.map(&:id)
   last_document = nil
   dirs = Directory.neighbors(File.expand_path(base_path))
-  indices = Index.filter(:token_id => tokens.map(&:id), :directory_id => dirs.map(&:id)).order(:document_id, :position).eager(:token).all
+  indices = Index.filter(:token_id => tokens.map(&:id), :directory_id => dirs.map(&:id)).order(:document_id, :position).eager(:token, :document, :line_content).all
   skip_count = 0
   slice_each(indices, tokens.length){ |slice|
     if skip_count > 0
