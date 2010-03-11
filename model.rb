@@ -126,7 +126,7 @@ end
 class Token < Sequel::Model
   set_schema do
     primary_key :id
-    varbinary :body, :null => false, :uniq => true, :size=> 4
+    varbinary :body, :null => false, :uniq => true, :size=> 16
     Fixnum :length, :null => false
   end
   create_table unless table_exists?
