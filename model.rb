@@ -132,36 +132,11 @@ class Token < Sequel::Model
   create_table unless table_exists?
   one_to_many :indices
 
-  def used_count
-    @used_count ||= self.indices.count
-  end
-
   # returns array of token
   def self.tokenize(line)
     DB.transaction {
       (0..(line.length-3)).map{ |i|
         self.find_or_create(:body => line[i, 3].rstrip, :length => 3)
-      }
-    }
-  end
-
-  # returns array of token
-  # body.length is 2 or 3
-  def self.slice(line)
-    case line.length % 3
-    when 0
-      diffs = Array.new(line.length / 3, 3)
-    when 1
-      diffs = Array.new(line.length / 3 - 1,3).concat([2, 2])
-    when 2
-      diffs = Array.new(line.length / 3,3).concat([2])
-    end
-    DB.transaction {
-      sum = 0
-      diffs.map{|i|
-        token = self.find_or_create(:body => line[sum, i].rstrip, :length => i)
-        sum += i
-        token
       }
     }
   end
