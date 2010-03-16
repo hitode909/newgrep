@@ -80,20 +80,6 @@ class Document < Sequel::Model
           :body => line.chomp,
           :line => line_number
           )
-        first_position = position
-        last_token = nil
-        Token.tokenize(line).each{|token|
-          position = first_position if last_token and token.length < last_token.length
-          Index.create(
-            :document_id => self.id,
-            :directory_id => self.directory_id,
-            :token_id => token.id,
-            :line => line_number,
-            :position => position
-            )
-          position += 1
-          last_token = token
-        }
       }
       self.indexed_at = Time.now
       self.save
@@ -163,27 +149,16 @@ def with_color(string, color)
 end
 
 def search(word, base_path = '/')
-  tokens = Token.tokenize(word)
   last_document = nil
   last_line = nil
   dirs = Directory.neighbors(File.expand_path(base_path))
-  indices = Index.filter(:token_id => tokens.map(&:id), :directory_id => dirs.map(&:id)).order(:document_id, :position).eager(:token, :document, :line_content).all
-
-  while indices.length >= tokens.length
-    slice = indices[0, tokens.length]
-    if slice.map(&:token) == tokens and slice[1..-1].inject(slice.first){ |a, b| a and a.position + 1 == b.position ? b : false }
-      indices.shift(tokens.length)
-      index = slice.first
-      document = index.document
-      last_line = nil if last_document and last_document != document
-      next if last_line and last_line == index.line
-      last_line = index.line
-      puts if last_document and last_document != document
-      puts with_color(document.path, 32) if last_document != document
-      last_document = document
-      puts "#{index.line}:" + wrap_color(index.line_content.body, word, 43)
-    else
-      indices.shift
-    end
-  end
+  docs = Document.filter(:directory_id => dirs.map(&:id))
+  lines = LineContent.filter(:body.like('%' + word + '%'), :document_id => docs.map(&:id)).order(:document_id, :line).eager(:document).all
+  lines.each{ |line|
+    document = line.document
+    puts if last_document and last_document != document
+    puts with_color(document.path, 32) if last_document != document
+    last_document = document
+    puts "#{line.line}:" + wrap_color(line.body, word, 43)
+  }
 end
